@@ -7,7 +7,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~= 5.0"
+      version = "~> 5.0"
     }
   }
 }
@@ -38,11 +38,11 @@ locals {
 data "aws_caller_identity" "current" {}
 
 output "account_id" {
-  value      = data.aws_caller_identity.current.account_id
+  value       = data.aws_caller_identity.current.account_id
   description = "AWS account ID for verification"
 }
 
 output "environment" {
-  value      = var.environment
+  value       = var.environment
   description = "Current environment"
 }
