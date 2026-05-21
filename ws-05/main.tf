@@ -4,7 +4,7 @@ terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
+      version = "~> 3.0"
     }
   }
 }
@@ -13,7 +13,7 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-resource "kubernetes_namespace" "production" {
+resource "kubernetes_namespace_v1" "production" {
   metadata {
     name = "dadgarcorp-production"
     labels = {
@@ -23,7 +23,17 @@ resource "kubernetes_namespace" "production" {
   }
 }
 
-resource "kubernetes_config_map" "nginx" {
+removed {
+  from = kubernetes_namespace.production
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_namespace_v1.production
+  id = "dadgarcorp-production"
+}
+
+resource "kubernetes_config_map_v1" "nginx" {
   metadata {
     name      = "nginx-config"
     namespace = "dadgarcorp-production"
@@ -38,7 +48,17 @@ resource "kubernetes_config_map" "nginx" {
   }
 }
 
-resource "kubernetes_service_account" "app" {
+removed {
+  from = kubernetes_config_map.nginx
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_config_map_v1.nginx
+  id = "dadgarcorp-production/nginx-config"
+}
+
+resource "kubernetes_service_account_v1" "app" {
   metadata {
     name      = "app-sa"
     namespace = "dadgarcorp-production"
@@ -53,7 +73,17 @@ resource "kubernetes_service_account" "app" {
   automount_service_account_token = true
 }
 
-resource "kubernetes_secret" "db_creds" {
+removed {
+  from = kubernetes_service_account.app
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_service_account_v1.app
+  id = "dadgarcorp-production/app-sa"
+}
+
+resource "kubernetes_secret_v1" "db_creds" {
   metadata {
     name      = "db-credentials"
     namespace = "dadgarcorp-production"
@@ -67,4 +97,14 @@ resource "kubernetes_secret" "db_creds" {
     host     = "REDACTED"
   }
   type = "Opaque"
+}
+
+removed {
+  from = kubernetes_secret.db_creds
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_secret_v1.db_creds
+  id = "dadgarcorp-production/db-credentials"
 }
