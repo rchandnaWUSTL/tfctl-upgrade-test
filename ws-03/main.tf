@@ -4,7 +4,7 @@ terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
+      version = "~> 3.0"
     }
   }
 }
@@ -13,7 +13,7 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-resource "kubernetes_cluster_role" "readonly" {
+resource "kubernetes_cluster_role_v1" "readonly" {
   metadata {
     name = "dadgarcorp-readonly"
     labels = {
@@ -27,7 +27,17 @@ resource "kubernetes_cluster_role" "readonly" {
   }
 }
 
-resource "kubernetes_namespace" "monitoring" {
+removed {
+  from = kubernetes_cluster_role.readonly
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_cluster_role_v1.readonly
+  id = "dadgarcorp-readonly"
+}
+
+resource "kubernetes_namespace_v1" "monitoring" {
   metadata {
     name = "dadgarcorp-monitoring"
     labels = {
@@ -37,7 +47,17 @@ resource "kubernetes_namespace" "monitoring" {
   }
 }
 
-resource "kubernetes_config_map" "prometheus" {
+removed {
+  from = kubernetes_namespace.monitoring
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_namespace_v1.monitoring
+  id = "dadgarcorp-monitoring"
+}
+
+resource "kubernetes_config_map_v1" "prometheus" {
   metadata {
     name      = "prometheus-config"
     namespace = "dadgarcorp-monitoring"
@@ -50,4 +70,14 @@ resource "kubernetes_config_map" "prometheus" {
     evaluation_interval = "30s"
     retention           = "15d"
   }
+}
+
+removed {
+  from = kubernetes_config_map.prometheus
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_config_map_v1.prometheus
+  id = "dadgarcorp-monitoring/prometheus-config"
 }
