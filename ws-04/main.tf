@@ -4,7 +4,7 @@ terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
+      version = "~> 3.0"
     }
   }
 }
@@ -13,7 +13,7 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-resource "kubernetes_service_account" "ci" {
+resource "kubernetes_service_account_v1" "ci" {
   metadata {
     name      = "ci-runner"
     namespace = "default"
@@ -31,7 +31,17 @@ resource "kubernetes_service_account" "ci" {
   }
 }
 
-resource "kubernetes_secret" "tls_cert" {
+removed {
+  from = kubernetes_service_account.ci
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_service_account_v1.ci
+  id = "default/ci-runner"
+}
+
+resource "kubernetes_secret_v1" "tls_cert" {
   metadata {
     name      = "tls-cert"
     namespace = "default"
@@ -46,7 +56,17 @@ resource "kubernetes_secret" "tls_cert" {
   type = "kubernetes.io/tls"
 }
 
-resource "kubernetes_cluster_role" "developer" {
+removed {
+  from = kubernetes_secret.tls_cert
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_secret_v1.tls_cert
+  id = "default/tls-cert"
+}
+
+resource "kubernetes_cluster_role_v1" "developer" {
   metadata {
     name = "dadgarcorp-developer"
     labels = {
@@ -58,4 +78,14 @@ resource "kubernetes_cluster_role" "developer" {
     resources  = ["pods", "deployments", "jobs", "cronjobs"]
     verbs      = ["get", "list", "watch", "create", "update", "patch"]
   }
+}
+
+removed {
+  from = kubernetes_cluster_role.developer
+  lifecycle { destroy = false }
+}
+
+import {
+  to = kubernetes_cluster_role_v1.developer
+  id = "dadgarcorp-developer"
 }
