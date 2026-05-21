@@ -4,7 +4,7 @@ terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
+      version = "~> 3.0"
     }
   }
 }
@@ -13,7 +13,8 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-resource "kubernetes_cluster_role" "admin" {
+# Migrated: kubernetes_cluster_role -> kubernetes_cluster_role_v1
+resource "kubernetes_cluster_role_v1" "admin" {
   metadata {
     name = "dadgarcorp-admin"
   }
@@ -24,7 +25,20 @@ resource "kubernetes_cluster_role" "admin" {
   }
 }
 
-resource "kubernetes_config_map" "app" {
+removed {
+  from = kubernetes_cluster_role.admin
+  lifecycle {
+    destroy = false
+  }
+}
+
+import {
+  to = kubernetes_cluster_role_v1.admin
+  id = "dadgarcorp-admin"
+}
+
+# Migrated: kubernetes_config_map -> kubernetes_config_map_v1
+resource "kubernetes_config_map_v1" "app" {
   metadata {
     name      = "app-config"
     namespace = "default"
@@ -40,7 +54,20 @@ resource "kubernetes_config_map" "app" {
   }
 }
 
-resource "kubernetes_namespace" "team" {
+removed {
+  from = kubernetes_config_map.app
+  lifecycle {
+    destroy = false
+  }
+}
+
+import {
+  to = kubernetes_config_map_v1.app
+  id = "default/app-config"
+}
+
+# Migrated: kubernetes_namespace -> kubernetes_namespace_v1
+resource "kubernetes_namespace_v1" "team" {
   metadata {
     name = "dadgarcorp-team"
     labels = {
@@ -48,4 +75,16 @@ resource "kubernetes_namespace" "team" {
       managed-by = "terraform"
     }
   }
+}
+
+removed {
+  from = kubernetes_namespace.team
+  lifecycle {
+    destroy = false
+  }
+}
+
+import {
+  to = kubernetes_namespace_v1.team
+  id = "dadgarcorp-team"
 }
