@@ -4,7 +4,7 @@ terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
+      version = "~> 3.0"
     }
   }
 }
@@ -13,7 +13,8 @@ provider "kubernetes" {
   config_path = "~/.kube/config"
 }
 
-resource "kubernetes_service_account" "deployer" {
+# Migrated: kubernetes_service_account -> kubernetes_service_account_v1
+resource "kubernetes_service_account_v1" "deployer" {
   metadata {
     name      = "deployer-sa"
     namespace = "default"
@@ -24,7 +25,20 @@ resource "kubernetes_service_account" "deployer" {
   automount_service_account_token = true
 }
 
-resource "kubernetes_secret" "api_key" {
+removed {
+  from = kubernetes_service_account.deployer
+  lifecycle {
+    destroy = false
+  }
+}
+
+import {
+  to = kubernetes_service_account_v1.deployer
+  id = "default/deployer-sa"
+}
+
+# Migrated: kubernetes_secret -> kubernetes_secret_v1
+resource "kubernetes_secret_v1" "api_key" {
   metadata {
     name      = "api-key"
     namespace = "default"
@@ -38,7 +52,20 @@ resource "kubernetes_secret" "api_key" {
   type = "Opaque"
 }
 
-resource "kubernetes_config_map" "env" {
+removed {
+  from = kubernetes_secret.api_key
+  lifecycle {
+    destroy = false
+  }
+}
+
+import {
+  to = kubernetes_secret_v1.api_key
+  id = "default/api-key"
+}
+
+# Migrated: kubernetes_config_map -> kubernetes_config_map_v1
+resource "kubernetes_config_map_v1" "env" {
   metadata {
     name      = "env-config"
     namespace = "default"
@@ -50,4 +77,16 @@ resource "kubernetes_config_map" "env" {
     DATABASE_URL = "postgres://db.internal:5432/app"
     REDIS_URL    = "redis://cache.internal:6379"
   }
+}
+
+removed {
+  from = kubernetes_config_map.env
+  lifecycle {
+    destroy = false
+  }
+}
+
+import {
+  to = kubernetes_config_map_v1.env
+  id = "default/env-config"
 }
