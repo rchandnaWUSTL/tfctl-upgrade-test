@@ -6,28 +6,55 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
   }
+}
+
+variable "cluster_name" {
+  type    = string
+  default = "dadgarcorp-demo"
+}
+
+variable "region" {
+  type    = string
+  default = "us-west-2"
+}
+
+provider "aws" {
+  region = var.region
+}
+
+data "aws_eks_cluster" "this" {
+  name = var.cluster_name
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = var.cluster_name
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/config"
+  host                   = data.aws_eks_cluster.this.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.this.token
 }
 
-resource "kubernetes_cluster_role" "admin" {
+resource "kubernetes_namespace" "ns" {
   metadata {
-    name = "dadgarcorp-admin"
-  }
-  rule {
-    api_groups = [""]
-    resources  = ["pods", "services", "deployments"]
-    verbs      = ["get", "list", "watch", "create", "update", "delete"]
+    name = "dadgarcorp-ws01"
+    labels = {
+      managed-by = "terraform"
+      demo       = "k8s-migration"
+    }
   }
 }
 
 resource "kubernetes_config_map" "app" {
   metadata {
     name      = "app-config"
-    namespace = "default"
+    namespace = "dadgarcorp-ws01"
     labels = {
       app        = "dadgarcorp"
       managed-by = "terraform"
@@ -40,11 +67,11 @@ resource "kubernetes_config_map" "app" {
   }
 }
 
-resource "kubernetes_namespace" "team" {
+resource "kubernetes_service_account" "sa" {
   metadata {
-    name = "dadgarcorp-team"
+    name      = "deployer"
+    namespace = "dadgarcorp-ws01"
     labels = {
-      team       = "platform"
       managed-by = "terraform"
     }
   }
