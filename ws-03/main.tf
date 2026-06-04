@@ -6,48 +6,80 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
   }
+}
+
+variable "cluster_name" {
+  type    = string
+  default = "dadgarcorp-demo"
+}
+
+variable "region" {
+  type    = string
+  default = "us-west-2"
+}
+
+# Endpoint + CA are passed in (sourced from the cluster), so the run does not
+# need eks:DescribeCluster. The provider only mints a short-lived token via
+# aws_eks_cluster_auth, which needs nothing beyond STS.
+variable "cluster_endpoint" {
+  type = string
+}
+
+variable "cluster_ca_cert" {
+  type = string
+}
+
+provider "aws" {
+  region = var.region
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = var.cluster_name
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/config"
+  host                   = var.cluster_endpoint
+  cluster_ca_certificate = base64decode(var.cluster_ca_cert)
+  token                  = data.aws_eks_cluster_auth.this.token
 }
 
-resource "kubernetes_cluster_role" "readonly" {
+resource "kubernetes_namespace" "ns" {
   metadata {
-    name = "dadgarcorp-readonly"
+    name = "dadgarcorp-ws03"
     labels = {
-      role = "readonly"
-    }
-  }
-  rule {
-    api_groups = [""]
-    resources  = ["pods", "services", "configmaps", "secrets"]
-    verbs      = ["get", "list", "watch"]
-  }
-}
-
-resource "kubernetes_namespace" "monitoring" {
-  metadata {
-    name = "dadgarcorp-monitoring"
-    labels = {
-      team    = "sre"
-      purpose = "monitoring"
+      managed-by = "terraform"
+      demo       = "k8s-migration"
     }
   }
 }
 
-resource "kubernetes_config_map" "prometheus" {
+resource "kubernetes_config_map" "app" {
   metadata {
-    name      = "prometheus-config"
-    namespace = "dadgarcorp-monitoring"
+    name      = "app-config"
+    namespace = "dadgarcorp-ws03"
     labels = {
-      app = "prometheus"
+      app        = "dadgarcorp"
+      managed-by = "terraform"
     }
   }
   data = {
-    scrape_interval     = "30s"
-    evaluation_interval = "30s"
-    retention           = "15d"
+    environment = "production"
+    log_level   = "info"
+    version     = "2.1.0"
+  }
+}
+
+resource "kubernetes_service_account" "sa" {
+  metadata {
+    name      = "deployer"
+    namespace = "dadgarcorp-ws03"
+    labels = {
+      managed-by = "terraform"
+    }
   }
 }

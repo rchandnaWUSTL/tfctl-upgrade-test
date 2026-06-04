@@ -50,7 +50,7 @@ provider "kubernetes" {
 
 resource "kubernetes_namespace" "ns" {
   metadata {
-    name = "dadgarcorp-ws04"
+    name = "dadgarcorp-ws06"
     labels = {
       managed-by = "terraform"
       demo       = "k8s-migration"
@@ -61,7 +61,7 @@ resource "kubernetes_namespace" "ns" {
 resource "kubernetes_config_map" "app" {
   metadata {
     name      = "app-config"
-    namespace = "dadgarcorp-ws04"
+    namespace = "dadgarcorp-ws06"
     labels = {
       app        = "dadgarcorp"
       managed-by = "terraform"
@@ -77,7 +77,7 @@ resource "kubernetes_config_map" "app" {
 resource "kubernetes_service_account" "sa" {
   metadata {
     name      = "deployer"
-    namespace = "dadgarcorp-ws04"
+    namespace = "dadgarcorp-ws06"
     labels = {
       managed-by = "terraform"
     }
@@ -87,7 +87,7 @@ resource "kubernetes_service_account" "sa" {
 resource "kubernetes_secret" "creds" {
   metadata {
     name      = "db-creds"
-    namespace = "dadgarcorp-ws04"
+    namespace = "dadgarcorp-ws06"
   }
   data = {
     token = "s3cr3t-db-creds"

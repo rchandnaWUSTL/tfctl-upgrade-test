@@ -6,65 +6,91 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
   }
+}
+
+variable "cluster_name" {
+  type    = string
+  default = "dadgarcorp-demo"
+}
+
+variable "region" {
+  type    = string
+  default = "us-west-2"
+}
+
+# Endpoint + CA are passed in (sourced from the cluster), so the run does not
+# need eks:DescribeCluster. The provider only mints a short-lived token via
+# aws_eks_cluster_auth, which needs nothing beyond STS.
+variable "cluster_endpoint" {
+  type = string
+}
+
+variable "cluster_ca_cert" {
+  type = string
+}
+
+provider "aws" {
+  region = var.region
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = var.cluster_name
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/config"
+  host                   = var.cluster_endpoint
+  cluster_ca_certificate = base64decode(var.cluster_ca_cert)
+  token                  = data.aws_eks_cluster_auth.this.token
 }
 
-resource "kubernetes_namespace" "production" {
+resource "kubernetes_namespace" "ns" {
   metadata {
-    name = "dadgarcorp-production"
+    name = "dadgarcorp-ws05"
     labels = {
-      env  = "production"
-      team = "platform"
+      managed-by = "terraform"
+      demo       = "k8s-migration"
     }
   }
 }
 
-resource "kubernetes_config_map" "nginx" {
+resource "kubernetes_config_map" "app" {
   metadata {
-    name      = "nginx-config"
-    namespace = "dadgarcorp-production"
+    name      = "app-config"
+    namespace = "dadgarcorp-ws05"
     labels = {
-      app = "nginx"
+      app        = "dadgarcorp"
+      managed-by = "terraform"
     }
   }
   data = {
-    worker_connections = "4096"
-    keepalive_timeout  = "65"
-    proxy_read_timeout = "300"
+    environment = "production"
+    log_level   = "info"
+    version     = "2.1.0"
   }
 }
 
-resource "kubernetes_service_account" "app" {
+resource "kubernetes_service_account" "sa" {
   metadata {
-    name      = "app-sa"
-    namespace = "dadgarcorp-production"
+    name      = "deployer"
+    namespace = "dadgarcorp-ws05"
     labels = {
-      app = "dadgarcorp"
-      env = "production"
-    }
-    annotations = {
-      "eks.amazonaws.com/role-arn" = "arn:aws:iam::650169680785:role/dadgarcorp-app"
+      managed-by = "terraform"
     }
   }
-  automount_service_account_token = true
 }
 
-resource "kubernetes_secret" "db_creds" {
+resource "kubernetes_cluster_role" "reader" {
   metadata {
-    name      = "db-credentials"
-    namespace = "dadgarcorp-production"
-    labels = {
-      app = "dadgarcorp"
-    }
+    name = "dadgarcorp-ws05-reader"
   }
-  data = {
-    username = "REDACTED"
-    password = "REDACTED"
-    host     = "REDACTED"
+  rule {
+    api_groups = [""]
+    resources  = ["pods", "services", "configmaps"]
+    verbs      = ["get", "list", "watch"]
   }
-  type = "Opaque"
 }
