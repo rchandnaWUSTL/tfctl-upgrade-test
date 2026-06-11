@@ -4,7 +4,7 @@ terraform {
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
+      version = "~> 3.0"
     }
     aws = {
       source  = "hashicorp/aws"
@@ -48,7 +48,7 @@ provider "kubernetes" {
   token                  = data.aws_eks_cluster_auth.this.token
 }
 
-resource "kubernetes_namespace" "ns" {
+resource "kubernetes_namespace_v1" "ns" {
   metadata {
     name = "dadgarcorp-ws15"
     labels = {
@@ -58,7 +58,7 @@ resource "kubernetes_namespace" "ns" {
   }
 }
 
-resource "kubernetes_config_map" "app" {
+resource "kubernetes_config_map_v1" "app" {
   metadata {
     name      = "app-config"
     namespace = "dadgarcorp-ws15"
@@ -74,7 +74,7 @@ resource "kubernetes_config_map" "app" {
   }
 }
 
-resource "kubernetes_service_account" "sa" {
+resource "kubernetes_service_account_v1" "sa" {
   metadata {
     name      = "deployer"
     namespace = "dadgarcorp-ws15"
@@ -84,7 +84,7 @@ resource "kubernetes_service_account" "sa" {
   }
 }
 
-resource "kubernetes_cluster_role" "reader" {
+resource "kubernetes_cluster_role_v1" "reader" {
   metadata {
     name = "dadgarcorp-ws15-reader"
   }
@@ -92,5 +92,55 @@ resource "kubernetes_cluster_role" "reader" {
     api_groups = [""]
     resources  = ["pods", "services", "configmaps"]
     verbs      = ["get", "list", "watch"]
+  }
+}
+
+# --- migration: import existing objects into versioned types ---
+import {
+  to = kubernetes_namespace_v1.ns
+  id = "dadgarcorp-ws15"
+}
+
+import {
+  to = kubernetes_config_map_v1.app
+  id = "dadgarcorp-ws15/app-config"
+}
+
+import {
+  to = kubernetes_service_account_v1.sa
+  id = "dadgarcorp-ws15/deployer"
+}
+
+import {
+  to = kubernetes_cluster_role_v1.reader
+  id = "dadgarcorp-ws15-reader"
+}
+
+# --- migration: release old types from state (no destroy) ---
+removed {
+  from = kubernetes_namespace.ns
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = kubernetes_config_map.app
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = kubernetes_service_account.sa
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = kubernetes_cluster_role.reader
+  lifecycle {
+    destroy = false
   }
 }
