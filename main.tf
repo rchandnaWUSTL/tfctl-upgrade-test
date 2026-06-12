@@ -7,25 +7,19 @@ variable "environment" {
   default = "prod"
 }
 
-variable "service_name" {
-  type    = string
-  default = "payments-api"
+variable "replica_count" {
+  type    = number
+  default = 3
+}
 
 resource "null_resource" "payments_api" {
   triggers = {
-    service     = var.service_name
-    environment = var.environment
-    replicas    = 3
-  }
-}
-
-resource "null_resource" "payments_db" {
-  triggers = {
-    service = "${var.service_name}-db"
-    engine  = "postgres"
+    service     = "payments-api"
+    environment = var.environmnet
+    replicas    = var.replica_count
   }
 }
 
 output "service" {
-  value = var.service_name
+  value = "payments-api (${var.environment})"
 }
