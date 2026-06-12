@@ -1,18 +1,31 @@
 terraform {
-  required_version = "1.15.3"
+  required_version = ">= 1.5.0"
 }
 
-provider "aws" {
-  region = var.aws_region
-}
-
-variable "aws_region" {
+variable "environment" {
   type    = string
-  default = "us-west-2"
+  default = "prod"
 }
 
-data "aws_caller_identity" "current" {}
+variable "service_name" {
+  type    = string
+  default = "payments-api"
 
-output "account_id" {
-  value = data.aws_caller_identity.current.account_id
+resource "null_resource" "payments_api" {
+  triggers = {
+    service     = var.service_name
+    environment = var.environment
+    replicas    = 3
+  }
+}
+
+resource "null_resource" "payments_db" {
+  triggers = {
+    service = "${var.service_name}-db"
+    engine  = "postgres"
+  }
+}
+
+output "service" {
+  value = var.service_name
 }
